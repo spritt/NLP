@@ -6,8 +6,10 @@ import re
 def spellCheck(text):
 	chkr = SpellChecker("en_US",text)
 	for err in chkr:
-		repl = chkr.suggest(err.word)[0]
-		err.replace(repl)
+		repls = chkr.suggest(err.word)
+		if len(repls) > 0:
+			repl = repls[0]
+			err.replace(repl)
 	return chkr.get_text()
 
 def errCount(text):
@@ -25,4 +27,13 @@ def tokenizeStripTags(text,stripTags=stripTags):
     # tokenize
     tagged_tokens = pos_tag(word_tokenize(text))
     tokens = [tok for tok,tag in tagged_tokens if tag not in stripTags]
+    return tokens
+
+keepTags = frozenset(['JJ','JJR','JJS','RB','RBR','RBS','VB','VBD','VBG','VBN','VBP','VBZ'])
+def tokenizeKeepTags(text,keepTags=keepTags):
+    # remove non letters
+    text = re.sub("[^a-zA-Z\s]", "", text)
+    # tokenize
+    tagged_tokens = pos_tag(word_tokenize(text))
+    tokens = [tok for tok,tag in tagged_tokens if tag in keepTags]
     return tokens
