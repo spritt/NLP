@@ -1,6 +1,6 @@
 #need to install pyenchant first
 from enchant.checker import SpellChecker
-from nltk import pos_tag, word_tokenize
+from nltk import pos_tag, pos_tag_sents ,word_tokenize, sent_tokenize
 import re
 
 def spellCheck(text):
@@ -19,21 +19,43 @@ def errCount(text):
 		count += 1
 	return count
 
-stripTags = frozenset(['FW', 'IN', 'LS', 'MD', 'NN','NNS','NNP','PDT','POS','PRP','RP','TO','UH','WDT'])
+stripTagSet = frozenset(['.','DT','FW', 'IN', 'LS', 'MD', 'NN','NNS','NNP','PDT','POS','PRP','RP','TO','UH','WDT'])
+keepTagSet = frozenset(['JJ','JJR','JJS','RB','RBR','RBS','VB','VBD','VBG','VBN','VBP','VBZ'])
+def toTaggedTokens(text):
+	sent_tokens = [word_tokenize(t) for t in sent_tokenize(text)]
+	return pos_tag_sents(sent_tokens)	
 
-def tokenizeStripTags(text,stripTags=stripTags):
-    # remove non letters
-    text = re.sub("[^a-zA-Z\s]", "", text)
-    # tokenize
-    tagged_tokens = pos_tag(word_tokenize(text))
-    tokens = [tok for tok,tag in tagged_tokens if tag not in stripTags]
-    return tokens
+def stripTags(sentOfTokens,tags=stripTagSet):
+    return [(tok,tag) for tok,tag in sentOfTokens if tag not in tags]
 
-keepTags = frozenset(['JJ','JJR','JJS','RB','RBR','RBS','VB','VBD','VBG','VBN','VBP','VBZ'])
-def tokenizeKeepTags(text,keepTags=keepTags):
-    # remove non letters
-    text = re.sub("[^a-zA-Z\s]", "", text)
-    # tokenize
-    tagged_tokens = pos_tag(word_tokenize(text))
-    tokens = [tok for tok,tag in tagged_tokens if tag in keepTags]
-    return tokens
+def keepTags(sentOfTokens,tags=keepTagSet):
+	return [(tok,tag) for tok,tag in sentOfTokens if tag in tags]
+
+def mergeNots(sentOfTokens):
+	newSent = []
+	isNot = False
+	for toktag in sentOfTokens:
+		tok, tag = toktag
+		if tok == 'not':
+			isNot = True
+		else:
+			if isNot:
+				newSent.append(('not-' + tok,tag))
+				isNot = False
+			else:
+				newSent.append(toktag)	
+	return newSent
+
+def tokenizeStripTags(text,tags=stripTagSet):
+	ttokens = toTaggedTokens(text)
+	return [item for sent in ttokens for item in stripTags(sent,tags)]
+
+
+def tokenizeKeepTags(text,tags=keepTagSet):
+	ttokens = toTaggedTokens(text)
+	return [item for sent in ttokens for item in keepTags(sent,tags)]
+	
+def tokenizeMergeNotsAndReduce(text):
+	ttokens = toTaggedTokens(text)
+	stripped = [mergeNots(stripTags(sent)) for sent in ttokens]
+	return [item for sent in stripped for item in keepTags(sent)]
